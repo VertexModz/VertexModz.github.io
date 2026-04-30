@@ -2,86 +2,142 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VertexModz</title>
 
 <style>
+* {
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+}
+
+/* 🌈 Animated Gradient */
 body {
   margin:0;
   font-family: 'Courier New', monospace;
-  background:#3b2f1e;
-  color:#fff;
+  background: linear-gradient(270deg,#0f172a,#1e3a8a,#38bdf8,#0ea5e9);
+  background-size: 600% 600%;
+  animation: gradientMove 10s ease infinite;
+  color:white;
 }
 
+@keyframes gradientMove {
+  0% { background-position:0% 50%; }
+  50% { background-position:100% 50%; }
+  100% { background-position:0% 50%; }
+}
+
+/* 🌙 Light Mode */
+body.light {
+  background: linear-gradient(270deg,#e0f2fe,#7dd3fc,#38bdf8);
+}
+
+/* HEADER */
 header {
-  background:#5c4033;
-  padding:15px;
+  padding:12px;
   display:flex;
   justify-content:space-between;
+  background:rgba(0,0,0,0.3);
+  backdrop-filter:blur(10px);
 }
 
-nav button {
-  margin-left:10px;
-  padding:8px 15px;
+/* BUTTON PIXEL STYLE */
+nav button, button.main {
   border:none;
+  padding:8px 12px;
   border-radius:6px;
-  background:#8b5a2b;
-  color:white;
+  background:#38bdf8;
   cursor:pointer;
+  box-shadow: 0 4px #0369a1;
+  transform: translateY(0);
 }
 
-.container { padding:20px; }
+/* 🔥 Hover / Tap effect */
+nav button:hover, button.main:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px #0284c7;
+}
 
+nav button:active, button.main:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px #0369a1;
+}
+
+button.danger {
+  background:#ef4444;
+  box-shadow:0 4px #991b1b;
+}
+
+/* CONTAINER */
+.container {
+  padding:10px;
+  max-width:500px;
+  margin:auto;
+}
+
+/* 🎮 Pixel Card Animation */
 .card {
-  background:#5c4033;
-  padding:15px;
+  background:rgba(255,255,255,0.1);
   border-radius:10px;
-  margin-bottom:15px;
+  padding:12px;
+  margin-bottom:12px;
+  backdrop-filter:blur(10px);
+
+  image-rendering: pixelated;
+  transform: scale(0.9);
+  opacity:0;
+  animation: pixelPop 0.4s forwards;
 }
 
+@keyframes pixelPop {
+  0% { transform: scale(0.6); opacity:0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity:1; }
+}
+
+/* INPUT */
 input {
   width:100%;
   padding:10px;
-  margin-top:10px;
-  border-radius:6px;
+  margin-top:8px;
   border:none;
+  border-radius:8px;
 }
 
-button.main {
-  margin-top:10px;
-  padding:10px;
+/* IMAGE */
+img {
   width:100%;
-  background:#9acd32;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
+  border-radius:8px;
+  image-rendering: pixelated;
 }
 
-button.danger { background:#dc2626; }
-
+/* PROGRESS */
 .progress {
   width:100%;
-  height:10px;
-  background:#222;
+  height:8px;
+  background:#1e293b;
+  border-radius:10px;
   margin-top:10px;
 }
 
 .progress-bar {
   height:100%;
   width:0%;
-  background:#4ade80;
+  background:#22c55e;
+  border-radius:10px;
+  transition: width 0.3s;
 }
-
-img { width:100%; }
 </style>
 </head>
 
 <body>
 
 <header>
-  <div>🧱 VertexModz</div>
+  <div>VertexModz</div>
   <nav>
-    <button onclick="showPage('skins')">มอดสกิน</button>
-    <button onclick="showPage('admin')">แดชบอร์ด</button>
+    <button onclick="showPage('skins')">สกิน</button>
+    <button onclick="showPage('admin')">แอดมิน</button>
+    <button onclick="toggleTheme()">🌙</button>
     <button id="logoutBtn" onclick="logout()" style="display:none;">ออก</button>
   </nav>
 </header>
@@ -106,7 +162,7 @@ img { width:100%; }
   <h2>⚙️ แดชบอร์ด</h2>
   <div class="card">
     <input id="nameInput" placeholder="ชื่อสกิน">
-    <input id="fileUrl" placeholder="ลิ้งไฟล์ (ดาวน์โหลดจริง)">
+    <input id="fileUrl" placeholder="ลิ้งดาวน์โหลด">
     <input type="file" id="imageFile">
 
     <div class="progress">
@@ -119,33 +175,38 @@ img { width:100%; }
 
 </div>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"></script>
 
 <script>
-// 🔐 ล็อกอินกำหนดเอง
-const USERNAME = "VertexAdmin";
-const PASSWORD = "221051";
+// LOGIN
+const USERNAME="VertexAdmin";
+const PASSWORD="221051";
+let isAdmin=false;
 
-let isAdmin = false;
+// THEME
+function toggleTheme(){
+  document.body.classList.toggle("light");
+}
 
-// 🔥 Firebase config
-const firebaseConfig = {
-  apiKey:"YOUR_KEY",
-  authDomain:"YOUR_DOMAIN",
-  projectId:"YOUR_PROJECT_ID",
-  storageBucket:"YOUR_BUCKET"
+// FIREBASE
+const firebaseConfig={
+apiKey:"AIzaSyCPOwfw-1sz2YwIrTGUutuCBr3xnECiVW8",
+authDomain:"vertexmodz.firebaseapp.com",
+projectId:"vertexmodz",
+storageBucket:"vertexmodz.firebasestorage.app"
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const storage = firebase.storage();
+const db=firebase.firestore();
+const storage=firebase.storage();
 
-let editingId = null;
-let editingImage = null;
+let editingId=null;
+let editingImage=null;
 
-// เปลี่ยนหน้า
+// PAGE
 function showPage(p){
   skinsPage.style.display="none";
   adminPage.style.display="none";
@@ -158,7 +219,7 @@ function showPage(p){
   }
 }
 
-// โหลดสกิน realtime
+// LOAD
 function loadSkins(){
   db.collection("skins").onSnapshot(s=>{
     skinsList.innerHTML="";
@@ -183,7 +244,7 @@ function loadSkins(){
   });
 }
 
-// เพิ่ม/แก้ไข
+// ADD / EDIT
 function addSkin(){
   let name=nameInput.value;
   let file=fileUrl.value;
@@ -220,7 +281,7 @@ function saveData(name,file,image){
   }
 }
 
-// ลบ + ลบรูป
+// DELETE
 function deleteSkin(id,imageUrl){
   if(confirm("ลบจริง?")){
     if(imageUrl){
@@ -231,7 +292,7 @@ function deleteSkin(id,imageUrl){
   }
 }
 
-// แก้ไข
+// EDIT
 function editSkin(id,name,file,image){
   nameInput.value=name;
   fileUrl.value=file;
@@ -240,15 +301,13 @@ function editSkin(id,name,file,image){
   showPage("admin");
 }
 
-// 🔐 login แบบกำหนดเอง
+// LOGIN
 function login(){
   if(user.value===USERNAME && pass.value===PASSWORD){
     isAdmin=true;
     logoutBtn.style.display="inline";
     showPage("admin");
-  }else{
-    alert("ข้อมูลไม่ถูกต้อง");
-  }
+  }else alert("ผิด");
 }
 
 function logout(){
@@ -257,9 +316,8 @@ function logout(){
   showPage("skins");
 }
 
-// โหลดข้อมูล
 loadSkins();
 </script>
 
 </body>
-  </html>
+</html>
