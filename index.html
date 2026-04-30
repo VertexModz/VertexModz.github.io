@@ -1,230 +1,46 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VertexModz</title>
+<script type="module">
+// 🔥 IMPORT
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-storage.js";
 
-<style>
-* {
-  box-sizing: border-box;
-  transition: all 0.25s ease;
-}
-
-/* 🌈 Animated Gradient */
-body {
-  margin:0;
-  font-family: 'Courier New', monospace;
-  background: linear-gradient(270deg,#0f172a,#1e3a8a,#38bdf8,#0ea5e9);
-  background-size: 600% 600%;
-  animation: gradientMove 10s ease infinite;
-  color:white;
-}
-
-@keyframes gradientMove {
-  0% { background-position:0% 50%; }
-  50% { background-position:100% 50%; }
-  100% { background-position:0% 50%; }
-}
-
-/* 🌙 Light Mode */
-body.light {
-  background: linear-gradient(270deg,#e0f2fe,#7dd3fc,#38bdf8);
-}
-
-/* HEADER */
-header {
-  padding:12px;
-  display:flex;
-  justify-content:space-between;
-  background:rgba(0,0,0,0.3);
-  backdrop-filter:blur(10px);
-}
-
-/* BUTTON PIXEL STYLE */
-nav button, button.main {
-  border:none;
-  padding:8px 12px;
-  border-radius:6px;
-  background:#38bdf8;
-  cursor:pointer;
-  box-shadow: 0 4px #0369a1;
-  transform: translateY(0);
-}
-
-/* 🔥 Hover / Tap effect */
-nav button:hover, button.main:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px #0284c7;
-}
-
-nav button:active, button.main:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px #0369a1;
-}
-
-button.danger {
-  background:#ef4444;
-  box-shadow:0 4px #991b1b;
-}
-
-/* CONTAINER */
-.container {
-  padding:10px;
-  max-width:500px;
-  margin:auto;
-}
-
-/* 🎮 Pixel Card Animation */
-.card {
-  background:rgba(255,255,255,0.1);
-  border-radius:10px;
-  padding:12px;
-  margin-bottom:12px;
-  backdrop-filter:blur(10px);
-
-  image-rendering: pixelated;
-  transform: scale(0.9);
-  opacity:0;
-  animation: pixelPop 0.4s forwards;
-}
-
-@keyframes pixelPop {
-  0% { transform: scale(0.6); opacity:0; }
-  60% { transform: scale(1.05); }
-  100% { transform: scale(1); opacity:1; }
-}
-
-/* INPUT */
-input {
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-  border:none;
-  border-radius:8px;
-}
-
-/* IMAGE */
-img {
-  width:100%;
-  border-radius:8px;
-  image-rendering: pixelated;
-}
-
-/* PROGRESS */
-.progress {
-  width:100%;
-  height:8px;
-  background:#1e293b;
-  border-radius:10px;
-  margin-top:10px;
-}
-
-.progress-bar {
-  height:100%;
-  width:0%;
-  background:#22c55e;
-  border-radius:10px;
-  transition: width 0.3s;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-  <div>VertexModz</div>
-  <nav>
-    <button onclick="showPage('skins')">สกิน</button>
-    <button onclick="showPage('admin')">แอดมิน</button>
-    <button onclick="toggleTheme()">🌙</button>
-    <button id="logoutBtn" onclick="logout()" style="display:none;">ออก</button>
-  </nav>
-</header>
-
-<div class="container">
-
-<div id="skinsPage">
-  <h2>🎮 มอดสกิน</h2>
-  <div id="skinsList"></div>
-</div>
-
-<div id="loginPage" style="display:none;">
-  <h2>🔐 ล็อกอิน</h2>
-  <div class="card">
-    <input id="user" placeholder="Username">
-    <input id="pass" type="password" placeholder="Password">
-    <button class="main" onclick="login()">เข้าสู่ระบบ</button>
-  </div>
-</div>
-
-<div id="adminPage" style="display:none;">
-  <h2>⚙️ แดชบอร์ด</h2>
-  <div class="card">
-    <input id="nameInput" placeholder="ชื่อสกิน">
-    <input id="fileUrl" placeholder="ลิ้งดาวน์โหลด">
-    <input type="file" id="imageFile">
-
-    <div class="progress">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
-
-    <button class="main" onclick="addSkin()">เพิ่ม / บันทึก</button>
-  </div>
-</div>
-
-</div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"></script>
-
-<script>
-// LOGIN
+// 🔐 LOGIN
 const USERNAME="VertexAdmin";
 const PASSWORD="221051";
 let isAdmin=false;
 
-// THEME
-function toggleTheme(){
-  document.body.classList.toggle("light");
-}
+// 🌙 THEME
+window.toggleTheme = ()=> document.body.classList.toggle("light");
 
-// FIREBASE
-const firebaseConfig={
-apiKey:"AIzaSyCPOwfw-1sz2YwIrTGUutuCBr3xnECiVW8",
-authDomain:"vertexmodz.firebaseapp.com",
-projectId:"vertexmodz",
-storageBucket:"vertexmodz.firebasestorage.app"
+// 🔥 CONFIG
+const firebaseConfig = {
+  apiKey:"AIzaSyCPOwfw-1sz2YwIrTGUutuCBr3xnECiVW8",
+  authDomain:"vertexmodz.firebaseapp.com",
+  projectId:"vertexmodz",
+  storageBucket:"vertexmodz.appspot.com"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db=firebase.firestore();
-const storage=firebase.storage();
+// 🚀 INIT
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-let editingId=null;
-let editingImage=null;
+// 📊 STATUS UI (ต้องมี element id="dbStatus")
+const statusEl = document.getElementById("dbStatus");
 
-// PAGE
-function showPage(p){
-  skinsPage.style.display="none";
-  adminPage.style.display="none";
-  loginPage.style.display="none";
+// 📡 CHECK FIRESTORE
+let firstLoad = true;
+try {
+  onSnapshot(collection(db,"skins"), (snap)=>{
+    if(firstLoad){
+      statusEl.innerHTML="✅ เชื่อมต่อ Firestore สำเร็จ";
+      statusEl.style.color="lightgreen";
+      firstLoad=false;
+    }
 
-  if(p==="skins") skinsPage.style.display="block";
-  else {
-    if(isAdmin) adminPage.style.display="block";
-    else loginPage.style.display="block";
-  }
-}
-
-// LOAD
-function loadSkins(){
-  db.collection("skins").onSnapshot(s=>{
     skinsList.innerHTML="";
-    s.forEach(doc=>{
-      let d=doc.data();
+    snap.forEach(docSnap=>{
+      let d=docSnap.data();
 
       skinsList.innerHTML+=`
       <div class="card">
@@ -236,16 +52,22 @@ function loadSkins(){
         </a>
 
         ${isAdmin?`
-        <button class="main" onclick="editSkin('${doc.id}','${d.name}','${d.file}','${d.image}')">แก้ไข</button>
-        <button class="main danger" onclick="deleteSkin('${doc.id}','${d.image}')">ลบ</button>
+        <button class="main" onclick="editSkin('${docSnap.id}','${d.name}','${d.file}','${d.image}')">แก้ไข</button>
+        <button class="main danger" onclick="deleteSkin('${docSnap.id}','${d.image}')">ลบ</button>
         `:""}
       </div>`;
     });
+  }, (error)=>{
+    statusEl.innerHTML="❌ เชื่อมต่อ Firestore ไม่สำเร็จ";
+    statusEl.style.color="red";
+    console.error(error);
   });
+}catch(e){
+  statusEl.innerHTML="❌ เชื่อมต่อ Firestore ไม่สำเร็จ";
 }
 
-// ADD / EDIT
-function addSkin(){
+// ➕ ADD
+window.addSkin = function(){
   let name=nameInput.value;
   let file=fileUrl.value;
   let fileImg=imageFile.files[0];
@@ -253,71 +75,72 @@ function addSkin(){
   if(!name||!file) return alert("กรอกข้อมูล");
 
   if(fileImg){
-    let ref=storage.ref("skins/"+Date.now());
-    let task=ref.put(fileImg);
+    let storageRef = ref(storage,"skins/"+Date.now());
+    let task = uploadBytesResumable(storageRef,fileImg);
 
-    task.on("state_changed",snap=>{
+    task.on("state_changed",(snap)=>{
       let percent=(snap.bytesTransferred/snap.totalBytes)*100;
       progressBar.style.width=percent+"%";
     },null,()=>{
-      ref.getDownloadURL().then(url=>{
+      getDownloadURL(task.snapshot.ref).then(url=>{
         saveData(name,file,url);
         progressBar.style.width="0%";
       });
     });
   }else{
-    saveData(name,file,editingImage);
+    saveData(name,file,null);
   }
+};
+
+async function saveData(name,file,image){
+  await addDoc(collection(db,"skins"),{name,file,image});
+  nameInput.value="";
+  fileUrl.value="";
+  imageFile.value="";
 }
 
-function saveData(name,file,image){
-  if(editingId){
-    db.collection("skins").doc(editingId).update({name,file,image});
-    editingId=null;
-    alert("แก้ไขแล้ว");
-  }else{
-    db.collection("skins").add({name,file,image});
-    alert("เพิ่มแล้ว");
-  }
-}
-
-// DELETE
-function deleteSkin(id,imageUrl){
+// 🗑️ DELETE
+window.deleteSkin = async function(id,imageUrl){
   if(confirm("ลบจริง?")){
     if(imageUrl){
-      let ref=storage.refFromURL(imageUrl);
-      ref.delete();
+      let imageRef = ref(storage,imageUrl);
+      await deleteObject(imageRef).catch(()=>{});
     }
-    db.collection("skins").doc(id).delete();
+    await deleteDoc(doc(db,"skins",id));
   }
-}
+};
 
-// EDIT
-function editSkin(id,name,file,image){
+// ✏️ EDIT
+window.editSkin = function(id,name,file,image){
   nameInput.value=name;
   fileUrl.value=file;
-  editingId=id;
-  editingImage=image;
-  showPage("admin");
-}
+};
 
-// LOGIN
-function login(){
+// 🔐 LOGIN
+window.login = function(){
   if(user.value===USERNAME && pass.value===PASSWORD){
     isAdmin=true;
     logoutBtn.style.display="inline";
     showPage("admin");
   }else alert("ผิด");
-}
+};
 
-function logout(){
+window.logout = function(){
   isAdmin=false;
   logoutBtn.style.display="none";
   showPage("skins");
-}
+};
 
-loadSkins();
+// 📄 PAGE
+window.showPage = function(p){
+  skinsPage.style.display="none";
+  adminPage.style.display="none";
+  loginPage.style.display="none";
+
+  if(p==="skins") skinsPage.style.display="block";
+  else {
+    if(isAdmin) adminPage.style.display="block";
+    else loginPage.style.display="block";
+  }
+};
 </script>
-
-</body>
-</html>
