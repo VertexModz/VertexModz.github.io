@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>VertexModz</title>
+
+<style>
+body {
+  margin:0;
+  font-family: 'Courier New', monospace;
+  background:#3b2f1e;
+  color:#fff;
+}
+
+header {
+  background:#5c4033;
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+}
+
+nav button {
+  margin-left:10px;
+  padding:8px 15px;
+  border:none;
+  border-radius:6px;
+  background:#8b5a2b;
+  color:white;
+  cursor:pointer;
+}
+
+.container { padding:20px; }
+
+.card {
+  background:#5c4033;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:15px;
+}
+
+input {
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border-radius:6px;
+  border:none;
+}
+
+button.main {
+  margin-top:10px;
+  padding:10px;
+  width:100%;
+  background:#9acd32;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+button.danger { background:#dc2626; }
+
+.progress {
+  width:100%;
+  height:10px;
+  background:#222;
+  margin-top:10px;
+}
+
+.progress-bar {
+  height:100%;
+  width:0%;
+  background:#4ade80;
+}
+
+img { width:100%; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>🧱 VertexModz</div>
+  <nav>
+    <button onclick="showPage('skins')">มอดสกิน</button>
+    <button onclick="showPage('admin')">แดชบอร์ด</button>
+    <button id="logoutBtn" onclick="logout()" style="display:none;">ออก</button>
+  </nav>
+</header>
+
+<div class="container">
+
+<div id="skinsPage">
+  <h2>🎮 มอดสกิน</h2>
+  <div id="skinsList"></div>
+</div>
+
+<div id="loginPage" style="display:none;">
+  <h2>🔐 ล็อกอิน</h2>
+  <div class="card">
+    <input id="user" placeholder="Username">
+    <input id="pass" type="password" placeholder="Password">
+    <button class="main" onclick="login()">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<div id="adminPage" style="display:none;">
+  <h2>⚙️ แดชบอร์ด</h2>
+  <div class="card">
+    <input id="nameInput" placeholder="ชื่อสกิน">
+    <input id="fileUrl" placeholder="ลิ้งไฟล์ (ดาวน์โหลดจริง)">
+    <input type="file" id="imageFile">
+
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <button class="main" onclick="addSkin()">เพิ่ม / บันทึก</button>
+  </div>
+</div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"></script>
+
+<script>
+// 🔐 ล็อกอินกำหนดเอง
+const USERNAME = "VertexAdmin";
+const PASSWORD = "221051";
+
+let isAdmin = false;
+
+// 🔥 Firebase config
+const firebaseConfig = {
+  apiKey:"YOUR_KEY",
+  authDomain:"YOUR_DOMAIN",
+  projectId:"YOUR_PROJECT_ID",
+  storageBucket:"YOUR_BUCKET"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let editingId = null;
+let editingImage = null;
+
+// เปลี่ยนหน้า
+function showPage(p){
+  skinsPage.style.display="none";
+  adminPage.style.display="none";
+  loginPage.style.display="none";
+
+  if(p==="skins") skinsPage.style.display="block";
+  else {
+    if(isAdmin) adminPage.style.display="block";
+    else loginPage.style.display="block";
+  }
+}
+
+// โหลดสกิน realtime
+function loadSkins(){
+  db.collection("skins").onSnapshot(s=>{
+    skinsList.innerHTML="";
+    s.forEach(doc=>{
+      let d=doc.data();
+
+      skinsList.innerHTML+=`
+      <div class="card">
+        <h3>${d.name}</h3>
+        <img src="${d.image}">
+        <br><br>
+        <a href="${d.file}" target="_blank">
+          <button class="main">ดาวน์โหลด</button>
+        </a>
+
+        ${isAdmin?`
+        <button class="main" onclick="editSkin('${doc.id}','${d.name}','${d.file}','${d.image}')">แก้ไข</button>
+        <button class="main danger" onclick="deleteSkin('${doc.id}','${d.image}')">ลบ</button>
+        `:""}
+      </div>`;
+    });
+  });
+}
+
+// เพิ่ม/แก้ไข
+function addSkin(){
+  let name=nameInput.value;
+  let file=fileUrl.value;
+  let fileImg=imageFile.files[0];
+
+  if(!name||!file) return alert("กรอกข้อมูล");
+
+  if(fileImg){
+    let ref=storage.ref("skins/"+Date.now());
+    let task=ref.put(fileImg);
+
+    task.on("state_changed",snap=>{
+      let percent=(snap.bytesTransferred/snap.totalBytes)*100;
+      progressBar.style.width=percent+"%";
+    },null,()=>{
+      ref.getDownloadURL().then(url=>{
+        saveData(name,file,url);
+        progressBar.style.width="0%";
+      });
+    });
+  }else{
+    saveData(name,file,editingImage);
+  }
+}
+
+function saveData(name,file,image){
+  if(editingId){
+    db.collection("skins").doc(editingId).update({name,file,image});
+    editingId=null;
+    alert("แก้ไขแล้ว");
+  }else{
+    db.collection("skins").add({name,file,image});
+    alert("เพิ่มแล้ว");
+  }
+}
+
+// ลบ + ลบรูป
+function deleteSkin(id,imageUrl){
+  if(confirm("ลบจริง?")){
+    if(imageUrl){
+      let ref=storage.refFromURL(imageUrl);
+      ref.delete();
+    }
+    db.collection("skins").doc(id).delete();
+  }
+}
+
+// แก้ไข
+function editSkin(id,name,file,image){
+  nameInput.value=name;
+  fileUrl.value=file;
+  editingId=id;
+  editingImage=image;
+  showPage("admin");
+}
+
+// 🔐 login แบบกำหนดเอง
+function login(){
+  if(user.value===USERNAME && pass.value===PASSWORD){
+    isAdmin=true;
+    logoutBtn.style.display="inline";
+    showPage("admin");
+  }else{
+    alert("ข้อมูลไม่ถูกต้อง");
+  }
+}
+
+function logout(){
+  isAdmin=false;
+  logoutBtn.style.display="none";
+  showPage("skins");
+}
+
+// โหลดข้อมูล
+loadSkins();
+</script>
+
+</body>
+  </html>
